@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
+using TjulfarBot.Net.Managers;
 using TjulfarBot.Net.Utils;
 
 namespace TjulfarBot.Net
@@ -11,6 +12,7 @@ namespace TjulfarBot.Net
         public static Program instance { get; private set; }
         public Settings Settings { get; }
         public DiscordSocketClient SocketClient { get; private set; }
+        public DatabaseManager DatabaseManager  { get; }
 
         private Program()
         {
@@ -23,6 +25,8 @@ namespace TjulfarBot.Net
                 Settings = Settings.Default;
                 JsonTool.Serialize(Settings, "settings.json");
             }
+
+            DatabaseManager = new DatabaseManager();
         }
 
         private async Task StartBot()

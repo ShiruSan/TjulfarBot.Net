@@ -9,6 +9,7 @@
       <PackageReference Include="Discord.Net.Core" Version="2.3.1" />
       <PackageReference Include="Discord.Net.Rest" Version="2.3.1" />
       <PackageReference Include="Discord.Net.WebSocket" Version="2.3.1" />
+      <PackageReference Include="MySql.Data" Version="8.0.25" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     </ItemGroup>
 
