@@ -21,10 +21,10 @@ namespace TjulfarBot.Net.Leveling
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "insert into `Levels` values (@id, @level, @messages)";
-            command.Prepare();
             command.Parameters.AddWithValue("@id", userid);
             command.Parameters.AddWithValue("@level", level);
             command.Parameters.AddWithValue("@messages", messages);
+            command.Prepare();
             command.ExecuteNonQuery();
         }
 
@@ -33,7 +33,7 @@ namespace TjulfarBot.Net.Leveling
             messages += count;
             int nextLevel = 10;
             if (level != 0) nextLevel = (level * 100);
-            if (messages == nextLevel)
+            if (messages >= nextLevel)
             {
                 level++;
                 messages = 0;
@@ -43,10 +43,10 @@ namespace TjulfarBot.Net.Leveling
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "update `Levels` set `level` = @level, `messages` = @messages where `userid` = @userid";
-            command.Prepare();
             command.Parameters.AddWithValue("@level", level);
             command.Parameters.AddWithValue("@messages", messages);
             command.Parameters.AddWithValue("@userid", userid);
+            command.Prepare();
             command.ExecuteNonQuery();
         }
 

@@ -18,11 +18,11 @@
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "insert into TempBans values (@id, @memberid, @expires, @passed)";
-            command.Prepare();
             command.Parameters.AddWithValue("@id", EntryID);
             command.Parameters.AddWithValue("@memberid", MemberID);
             command.Parameters.AddWithValue("@expires", Expires);
             command.Parameters.AddWithValue("@passed", false);
+            command.Prepare();
             command.ExecuteNonQuery();
         }
 
@@ -31,9 +31,9 @@
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "update TempBans set passed = @passed where id = @id";
+            command.Parameters.AddWithValue("@passed", true);
+            command.Parameters.AddWithValue("@id", EntryID);
             command.Prepare();
-            command.Parameters["@passed"].Value = true;
-            command.Parameters["@id"].Value = EntryID;
             command.ExecuteNonQuery();
         }
         

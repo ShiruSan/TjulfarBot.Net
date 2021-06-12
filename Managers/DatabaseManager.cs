@@ -5,14 +5,7 @@ namespace TjulfarBot.Net.Managers
     public class DatabaseManager
     {
 
-        private readonly MySqlConnectionStringBuilder _sqlConnectionStringBuilder = new MySqlConnectionStringBuilder()
-        {
-            Server = Program.instance.Settings.mySQLConfig.ip,
-            Port = (uint) Program.instance.Settings.mySQLConfig.port,
-            UserID = Program.instance.Settings.mySQLConfig.username,
-            Password = Program.instance.Settings.mySQLConfig.password,
-            Database = Program.instance.Settings.mySQLConfig.database
-        };
+        private MySqlConnectionStringBuilder _sqlConnectionStringBuilder;
 
         public MySqlConnection GetConnection()
         {
@@ -23,6 +16,15 @@ namespace TjulfarBot.Net.Managers
         
         public void Init()
         {
+            _sqlConnectionStringBuilder = new MySqlConnectionStringBuilder()
+            {
+                Server = Program.instance.Settings.mySQLConfig.ip,
+                Port = (uint) Program.instance.Settings.mySQLConfig.port,
+                UserID = Program.instance.Settings.mySQLConfig.username,
+                Password = Program.instance.Settings.mySQLConfig.password,
+                Database = Program.instance.Settings.mySQLConfig.database
+            };
+            
             using var connection = GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "CREATE TABLE IF NOT EXISTS  `TempBans` (" +

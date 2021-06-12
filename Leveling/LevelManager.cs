@@ -18,9 +18,9 @@ namespace TjulfarBot.Net.Leveling
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "insert into `LevelConfig` values (@id, @type)";
-            command.Prepare();
             command.Parameters.AddWithValue("@id", userid);
             command.Parameters.AddWithValue("@type", "blacklist");
+            command.Prepare();
             command.ExecuteNonQuery();
         }
         
@@ -29,9 +29,9 @@ namespace TjulfarBot.Net.Leveling
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "insert into `LevelConfig` values (@id, @type)";
-            command.Prepare();
             command.Parameters.AddWithValue("@id", channelid);
             command.Parameters.AddWithValue("@type", "channel");
+            command.Prepare();
             command.ExecuteNonQuery();
         }
         
@@ -40,8 +40,8 @@ namespace TjulfarBot.Net.Leveling
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "delete fron `LevelConfig` where `id` = @id";
-            command.Prepare();
             command.Parameters.AddWithValue("@id", userid);
+            command.Prepare();
             command.ExecuteNonQuery();
         }
         
@@ -50,8 +50,8 @@ namespace TjulfarBot.Net.Leveling
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "delete fron `LevelConfig` where `id` = @id";
-            command.Prepare();
             command.Parameters.AddWithValue("@id", channelid);
+            command.Prepare();
             command.ExecuteNonQuery();
         }
         
@@ -60,9 +60,9 @@ namespace TjulfarBot.Net.Leveling
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "select * from `LevelConfig` where id = @id && `type` = @type";
-            command.Prepare();
             command.Parameters.AddWithValue("@id", channelid);
             command.Parameters.AddWithValue("@type", "blacklist");
+            command.Prepare();
             using var reader = command.ExecuteReader();
             return reader.HasRows;
         }
@@ -72,9 +72,9 @@ namespace TjulfarBot.Net.Leveling
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "select * from `LevelConfig` where `id` = @id && `type` = @type";
-            command.Prepare();
             command.Parameters.AddWithValue("@id", channelid);
             command.Parameters.AddWithValue("@type", "channel");
+            command.Prepare();
             using var reader = command.ExecuteReader();
             return reader.HasRows;
         }
@@ -84,8 +84,8 @@ namespace TjulfarBot.Net.Leveling
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "select * from `Levels` where userid = @userid";
-            command.Prepare();
             command.Parameters.AddWithValue("@userid", userid);
+            command.Prepare();
             using var reader = command.ExecuteReader();
             return reader.HasRows;
         }
@@ -102,9 +102,10 @@ namespace TjulfarBot.Net.Leveling
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "select * from `Levels` where userid = @userid";
-            command.Prepare();
             command.Parameters.AddWithValue("@userid", userid);
+            command.Prepare();
             using var reader = command.ExecuteReader();
+            reader.Read();
             return new Profile((long) userid, reader.GetInt32(1), reader.GetInt32(2));
         }
 

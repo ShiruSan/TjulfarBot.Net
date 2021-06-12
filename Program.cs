@@ -18,7 +18,7 @@ namespace TjulfarBot.Net
         {
             if (File.Exists("settings.json"))
             {
-                Settings = (Settings) JsonTool.Deserialize(typeof(Utils.Settings), "settings.json");
+                Settings = (Settings) JsonTool.Deserialize(typeof(Settings), "settings.json");
             }
             else
             {

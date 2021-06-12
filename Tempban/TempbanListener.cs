@@ -19,9 +19,9 @@ namespace TjulfarBot.Net.Tempban
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "select * from TempBans where `passed` = @passed && `passing` < @passing";
-            command.Prepare();
             command.Parameters.AddWithValue("@passed", false);
             command.Parameters.AddWithValue("@passing", DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond);
+            command.Prepare();
             var reader = command.ExecuteReader();
             if (reader.HasRows)
             {

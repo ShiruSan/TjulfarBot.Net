@@ -8,7 +8,9 @@ namespace TjulfarBot.Net.Youtube
         public string etag;
         public ID id;
         public Snippet snippet;
-        
+
+        public string GetAsVideoUrl() => $"https://www.youtube.com/watch?v={id.videoId}";
+
         public class ID
         {
             public string kind;
