@@ -1,4 +1,5 @@
-﻿using MySql.Data.MySqlClient;
+﻿using System;
+using MySql.Data.MySqlClient;
 
 namespace TjulfarBot.Net.Managers
 {
@@ -10,7 +11,17 @@ namespace TjulfarBot.Net.Managers
         public MySqlConnection GetConnection()
         {
             var connection = new MySqlConnection(_sqlConnectionStringBuilder.ToString());
-            connection.Open();
+            try
+            {
+                connection.Open();
+            }
+            catch (MySqlException e)
+            {
+                Console.WriteLine(e);
+                Console.WriteLine("\n");
+                Console.WriteLine(e.InnerException);
+                throw;
+            }
             return connection;
         }
         
@@ -22,7 +33,8 @@ namespace TjulfarBot.Net.Managers
                 Port = (uint) Program.instance.Settings.mySQLConfig.port,
                 UserID = Program.instance.Settings.mySQLConfig.username,
                 Password = Program.instance.Settings.mySQLConfig.password,
-                Database = Program.instance.Settings.mySQLConfig.database
+                Database = Program.instance.Settings.mySQLConfig.database,
+                SslMode = MySqlSslMode.None
             };
             
             using var connection = GetConnection();
@@ -45,10 +57,12 @@ namespace TjulfarBot.Net.Managers
                                   "Primary Key(id));";
             command.Prepare();
             command.ExecuteNonQuery();
-            command.CommandText = "CREATE TABLE IF NOT EXISTS  `Youtube` (" +
-                                  "`channelid` varchar(100) not null," +
-                                  "`channelname` varchar(100) not null," +
-                                  "Primary Key(channelid));";
+            command.CommandText = "CREATE TABLE IF NOT EXISTS `Eco`" +
+                                  "( `id` INT NOT NULL ," +
+                                  "`userid` BIGINT NOT NULL ," +
+                                  " `money` INT NOT NULL ," +
+                                  "`accountType` VARCHAR(12) NOT NULL ," +
+                                  "PRIMARY KEY (`id`));";
             command.Prepare();
             command.ExecuteNonQuery();
         }

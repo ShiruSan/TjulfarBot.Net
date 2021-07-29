@@ -5,6 +5,7 @@ using Discord.WebSocket;
 using TjulfarBot.Net.Commands;
 using TjulfarBot.Net.Leveling;
 using TjulfarBot.Net.Tempban;
+using TjulfarBot.Net.Warn;
 
 namespace TjulfarBot.Net.Managers
 {
@@ -20,6 +21,8 @@ namespace TjulfarBot.Net.Managers
             Commands.Add(new Clear());
             Commands.Add(new LevelCommand());
             Commands.Add(new TempbanCommand());
+            Commands.Add(new WarnCommand());
+            Commands.Add(new Whois());
         }
 
         public async void ExecuteCommand(Command command, DiscordSocketClient socketClient, SocketMessage message, string[] arguments)
@@ -44,6 +47,7 @@ namespace TjulfarBot.Net.Managers
                         return;
                     }
                 }
+                else return;
             }
             command.OnCommand(new CommandContext(socketClient, message, arguments));
         }

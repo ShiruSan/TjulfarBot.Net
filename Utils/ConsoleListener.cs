@@ -18,7 +18,7 @@ namespace TjulfarBot.Net.Utils
             if (consoleListener == null)
             {
                 consoleListener = new ConsoleListener();
-                consoleListener.listener = new Thread(new ThreadStart(consoleListener.Run));
+                consoleListener.listener = new Thread(consoleListener.Run);
             }
             return consoleListener;
         }

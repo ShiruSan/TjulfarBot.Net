@@ -1,5 +1,8 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
+using System.Threading;
 using Discord;
+using Discord.Rest;
 using Discord.WebSocket;
 using TjulfarBot.Net.Commands;
 using TjulfarBot.Net.Managers;
@@ -36,24 +39,67 @@ namespace TjulfarBot.Net.Leveling
                     return;
                 }
 
-                if (ctx.Message.MentionedUsers.Count != 1)
+                if (ctx.Arguments[0].Equals("leaderboard"))
                 {
-                    SendHelpMessage(ctx.Channel);
-                    return; 
-                }
-
-                SocketUser socketUser = ctx.Message.MentionedUsers.ToArray()[0];
-                
-                Embed toSend;
-                if (LevelManager.Get().ExistsProfile(socketUser.Id))
-                {
-                    toSend = LevelManager.Get().GetProfile(socketUser.Id).CreateEmbed();
+                    if (!LevelManager.Get().ExistsProfile(ctx.Author.Id))
+                        LevelManager.Get().CreateProfile(ctx.Author.Id);
+                    var builder = new EmbedBuilder();
+                    builder.WithColor(Color.Blue).WithTitle("Leaderboard, die 10 aktivsten Member !");
+                    if (LevelManager.Get().IsOnLeaderboard(ctx.Author.Id))
+                    {
+                        builder.WithFields(new[]
+                        {
+                            new EmbedFieldBuilder().WithName("Die Top 10:")
+                                .WithValue(String.Join("\n", LevelManager.Get().GetLeaderboard(ctx.Author.Id)))
+                                .WithIsInline(false)
+                        });
+                        builder.WithFooter(new EmbedFooterBuilder()
+                        {
+                            Text = $"Stand: {DateTime.Now}",
+                            IconUrl = ctx.Author.GetAvatarUrl()
+                        });
+                        ctx.Channel.SendMessageAsync(null, false, builder.Build()).GetAwaiter().GetResult();
+                    }
+                    else
+                    {
+                        builder.WithFields(new[]
+                        {
+                            new EmbedFieldBuilder().WithName("Die Top 10:")
+                                .WithValue(String.Join("\n", LevelManager.Get().GetLeaderboard(ctx.Author.Id)))
+                                .WithIsInline(false),
+                            new EmbedFieldBuilder().WithName("Dein aktueller Rang:").WithValue("Ladet...").WithIsInline(false)
+                        });
+                        builder.WithFooter(new EmbedFooterBuilder()
+                        {
+                            Text = $"Stand: {DateTime.Now}",
+                            IconUrl = ctx.Author.GetAvatarUrl()
+                        });
+                        var message = ctx.Channel.SendMessageAsync(null, false, builder.Build()).GetAwaiter().GetResult();
+                        new RankLoader(message, ctx.Author.Id).Start();
+                    }
                 }
                 else
                 {
-                    toSend = LevelManager.Get().CreateProfile(socketUser.Id).CreateEmbed();
+                    if (ctx.Message.MentionedUsers.Count != 1)
+                    {
+                        SendHelpMessage(ctx.Channel);
+                        return; 
+                    }
+
+                    SocketUser socketUser = ctx.Message.MentionedUsers.ToArray()[0];
+                
+                    Embed toSend;
+                    if (LevelManager.Get().ExistsProfile(socketUser.Id))
+                    {
+                        toSend = LevelManager.Get().GetProfile(socketUser.Id).CreateEmbed();
+                    }
+                    else
+                    {
+                        toSend = LevelManager.Get().CreateProfile(socketUser.Id).CreateEmbed();
+                    }
+                    ctx.Channel.SendMessageAsync(null, false, toSend).GetAwaiter().GetResult();
                 }
-                ctx.Channel.SendMessageAsync(null, false, toSend).GetAwaiter().GetResult();
+                
                 
             }
             else if (ctx.Arguments.Length == 2)
@@ -155,6 +201,34 @@ namespace TjulfarBot.Net.Leveling
                 new EmbedFieldBuilder().WithName("Nutzung des Command").WithValue("`+level`\n`+level @Mitglied`\n`+level channels add/remove #channel`\n`+level blacklist @Member`").WithIsInline(false)
             });
             channel.SendMessageAsync(null, false, builder.Build()).GetAwaiter().GetResult();
+        }
+
+        private class RankLoader
+        {
+            private Thread _thread;
+            private RestUserMessage _message;
+            private ulong _userid;
+
+            public RankLoader(RestUserMessage message, ulong userid)
+            {
+                _message = message;
+                _userid = userid;
+                _thread = new Thread(Load);
+            }
+
+            public void Start()
+            {
+                _thread.Start();
+            }
+
+            private void Load()
+            {
+                var rank = LevelManager.Get().GetLeaderboardRank(_userid);
+                var builder = _message.Embeds.First().ToEmbedBuilder();
+                builder.Fields[1] = builder.Fields[1].WithValue(rank);
+                _message.ModifyAsync(m => { m.Embed = new Optional<Embed>(builder.Build());}).GetAwaiter().GetResult();
+            }
+            
         }
         
     }

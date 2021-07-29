@@ -1,11 +1,15 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using Discord;
+using Discord.Rest;
 using Discord.WebSocket;
 using TjulfarBot.Net.Leveling;
 using TjulfarBot.Net.Managers;
 using TjulfarBot.Net.Tempban;
 using TjulfarBot.Net.Utils;
+using TjulfarBot.Net.Warn;
+using TjulfarBot.Net.Youtube;
 
 namespace TjulfarBot.Net
 {
@@ -25,18 +29,64 @@ namespace TjulfarBot.Net
             SocketClient.UserLeft += SocketClientOnUserLeft;
             SocketClient.UserBanned += SocketClientOnUserBanned;
             SocketClient.UserUnbanned += SocketClientOnUserUnbanned;
+            SocketClient.UserVoiceStateUpdated += SocketClientOnUserVoiceStateUpdated;
+        }
+
+        private static Task SocketClientOnUserVoiceStateUpdated(SocketUser user, SocketVoiceState before, SocketVoiceState after)
+        {
+            if (before.VoiceChannel == null && after.VoiceChannel != null)
+            {
+                if (user.IsBot) return Task.CompletedTask;
+                if(LevelManager.Get().ExistsBlacklist(user.Id)) return Task.CompletedTask;
+                if(after.VoiceChannel.Id == after.VoiceChannel.Guild.AFKChannel.Id) return Task.CompletedTask;
+                VoiceCounter.Get().VoiceCounters.Add(user.Id, after);
+            }
+            else if (before.VoiceChannel != null && after.VoiceChannel != null)
+            {
+                if(user.IsBot) return Task.CompletedTask;
+                if(!VoiceCounter.Get().VoiceCounters.ContainsKey(user.Id)) return Task.CompletedTask;
+                if (after.VoiceChannel.Id == after.VoiceChannel.Guild.AFKChannel.Id)
+                {
+                    VoiceCounter.Get().VoiceCounters.Remove(user.Id);
+                    return Task.CompletedTask;
+                }
+                VoiceCounter.Get().VoiceCounters[user.Id] = after;
+            }
+            else if (before.VoiceChannel != null && after.VoiceChannel == null)
+            {
+                if(user.IsBot) return Task.CompletedTask;
+                if(!VoiceCounter.Get().VoiceCounters.ContainsKey(user.Id)) return Task.CompletedTask;
+                VoiceCounter.Get().VoiceCounters.Remove(user.Id);
+            }
+            return Task.CompletedTask;
+        }
+
+        public static void OnWarned(WarnManager.Warn warn)
+        {
+            if(Program.instance.Settings.serverLogChannel == -1) return;
+            var channel = warn.mod.Guild.GetTextChannel((ulong) Program.instance.Settings.serverLogChannel);
+            var builder = new EmbedBuilder();
+            builder.WithTitle($"{warn.user} wurde gewarnt").WithColor(new Color(255, 255, 0)).WithThumbnailUrl(warn.user.GetAvatarUrl());
+            string reason;
+            if (warn.reason == null) reason = "Nicht angegeben";
+            else reason = warn.reason;
+            builder.WithFields(new[]
+            {
+                new EmbedFieldBuilder().WithName("Verwarner:").WithValue(warn.mod).WithIsInline(false),
+                new EmbedFieldBuilder().WithName("Grund:").WithValue(reason).WithIsInline(false)
+            });
+            channel.SendMessageAsync(null, false, builder.Build()).GetAwaiter().GetResult();
         }
 
         private static Task SocketClientOnUserUnbanned(SocketUser arg1, SocketGuild arg2)
         {
             if(Program.instance.Settings.serverLogChannel == -1) return Task.CompletedTask;
             var channel = arg2.GetTextChannel((ulong) Program.instance.Settings.serverLogChannel);
-            Task.Delay(1000).GetAwaiter().GetResult();
+            Task.Delay(250).GetAwaiter().GetResult();
             var logs = arg2.GetAuditLogsAsync(10).FlattenAsync().GetAwaiter().GetResult();
             IUser mod = null;
             foreach (var log in logs)
             {
-                if(log.Id != arg1.Id) continue;
                 if(log.Action != ActionType.Unban) continue;
                 mod = log.User;
                 break;
@@ -48,6 +98,7 @@ namespace TjulfarBot.Net
                 new EmbedFieldBuilder().WithName("Mitglied:").WithValue(arg1.ToString()).WithIsInline(true),
                 new EmbedFieldBuilder().WithName("Mod:").WithValue(mod.Mention).WithIsInline(true)
             });
+            builder.WithFooter($"User-ID: {arg1.Id}");
             channel.SendMessageAsync(null, false, builder.Build()).GetAwaiter().GetResult();
             return Task.CompletedTask;
         }
@@ -56,42 +107,56 @@ namespace TjulfarBot.Net
         {
             if(Program.instance.Settings.serverLogChannel == -1) return Task.CompletedTask;
             var channel = arg2.GetTextChannel((ulong) Program.instance.Settings.serverLogChannel);
-            Task.Delay(1000).GetAwaiter().GetResult();
+            Task.Delay(250).GetAwaiter().GetResult();
             var logs = arg2.GetAuditLogsAsync(10).FlattenAsync().GetAwaiter().GetResult();
             IUser mod = null;
             string reason = null;
             foreach (var log in logs)
             {
-                if(log.Id != arg1.Id) continue;
                 if(log.Action != ActionType.Ban) continue;
+                if((log.Data as BanAuditLogData).Target.Id != arg1.Id) continue;
                 mod = log.User;
                 reason = log.Reason;
                 break;
             }
             var builder = new EmbedBuilder();
             builder.WithTitle("Mitglied wurde gebannt !").WithColor(Color.Red).WithThumbnailUrl(arg1.GetAvatarUrl());
-            builder.WithFields(new[]
+            if (reason == null)
             {
-                new EmbedFieldBuilder().WithName("Mitglied:").WithValue(arg1.ToString()).WithIsInline(true),
-                new EmbedFieldBuilder().WithName("Mod:").WithValue(mod.Mention).WithIsInline(true)
-            });
+                builder.WithFields(new[]
+                {
+                    new EmbedFieldBuilder().WithName("Mitglied:").WithValue(arg1.ToString()).WithIsInline(true),
+                    new EmbedFieldBuilder().WithName("Mod:").WithValue(mod.Mention).WithIsInline(true),
+                });
+            }
+            else
+            {
+                builder.WithFields(new[]
+                {
+                    new EmbedFieldBuilder().WithName("Mitglied:").WithValue(arg1.ToString()).WithIsInline(true),
+                    new EmbedFieldBuilder().WithName("Mod:").WithValue(mod.Mention).WithIsInline(false),
+                    new EmbedFieldBuilder().WithName("Grund:").WithValue(reason).WithIsInline(false)
+                });
+            }
+            builder.WithFooter($"User-ID: {arg1.Id}");
+            LevelManager.Get().DeleteProfile(arg1.Id);
             channel.SendMessageAsync(null, false, builder.Build()).GetAwaiter().GetResult();
             return Task.CompletedTask;
         }
 
         private static Task SocketClientOnUserLeft(SocketGuildUser arg)
         {
-            if(Program.instance.Settings.serverLogChannel == -1) return Task.CompletedTask;
+            LevelManager.Get().DeleteProfile(arg.Id);
             var channel = arg.Guild.GetTextChannel((ulong) Program.instance.Settings.serverLogChannel);
-            Task.Delay(1000).GetAwaiter().GetResult();
+            Task.Delay(250).GetAwaiter().GetResult();
             var logs = arg.Guild.GetAuditLogsAsync(10).FlattenAsync().GetAwaiter().GetResult();
             var kicked = false;
             IUser mod = null;
             string reason = null;
             foreach(var log in logs)
             {
-                if(log.Id != arg.Id) continue;
                 if(log.Action != ActionType.Kick) continue;
+                if((log.Data as KickAuditLogData).Target.Id != arg.Id) continue;
                 kicked = true;
                 mod = log.User;
                 reason = log.Reason;
@@ -101,7 +166,9 @@ namespace TjulfarBot.Net
             var builder = new EmbedBuilder();
             if (kicked)
             {
-                builder.WithTitle("Mitglied gekickt !").WithColor(new Color(255, 255, 0)).WithThumbnailUrl(arg.GetAvatarUrl());
+                if(Program.instance.Settings.serverLogChannel == -1) return Task.CompletedTask;
+                builder.WithTitle("Mitglied gekickt !").WithColor(new Color(255, 255, 0))
+                    .WithThumbnailUrl(arg.GetAvatarUrl());
                 EmbedFieldBuilder[] fields;
                 if (reason == null)
                 {
@@ -120,16 +187,17 @@ namespace TjulfarBot.Net
                         new EmbedFieldBuilder().WithName("Grund: ").WithValue(reason).WithIsInline(false)
                     };
                 }
+
                 builder.WithFields(fields);
+                builder.WithFooter($"User-ID: {arg.Id}");
             }
             else
             {
-                builder.WithTitle("Mitglied hat den Server verlassen").WithColor(Color.Blue)
+                if(Program.instance.Settings.welcomeChannel == -1) return Task.CompletedTask;
+                builder.WithTitle($"{arg} hat den Server verlassen !").WithColor(Color.DarkerGrey)
                     .WithThumbnailUrl(arg.GetAvatarUrl());
-                builder.WithFields(new[]
-                {
-                    new EmbedFieldBuilder().WithName("Mitglied:").WithValue(arg.ToString()).WithIsInline(false)
-                });
+                builder.WithDescription($"Wir wünschen {arg} dennoch weiterhin viel Spaß !");
+                channel = arg.Guild.GetTextChannel((ulong) Program.instance.Settings.welcomeChannel);
             }
             channel.SendMessageAsync(null, false, builder.Build()).GetAwaiter().GetResult();
             return Task.CompletedTask;
@@ -140,7 +208,7 @@ namespace TjulfarBot.Net
             if(Program.instance.Settings.welcomeChannel == -1) return Task.CompletedTask;
             var channel = arg.Guild.GetTextChannel((ulong) Program.instance.Settings.welcomeChannel);
             var builder = new EmbedBuilder();
-            builder.WithTitle("Neues Mitglied !").WithThumbnailUrl(arg.GetAvatarUrl());
+            builder.WithTitle("Neues Mitglied !").WithThumbnailUrl(arg.GetAvatarUrl()).WithColor(Color.Green);
             var regeln = "Regeln";
             if (Program.instance.Settings.levelupChannel != -1) regeln = arg.Guild.GetTextChannel((ulong) Program.instance.Settings.ruleChannel).Mention;
             builder.WithDescription(
@@ -187,22 +255,31 @@ namespace TjulfarBot.Net
             }
             else
             {
-                if (!LevelManager.Get().ExistsLevelChannel(arg.Id)) return Task.CompletedTask;
+                if (!LevelManager.Get().ExistsLevelChannel(arg.Channel.Id)) return Task.CompletedTask;
                 if (LevelManager.Get().ExistsProfile(arg.Author.Id))
                 {
-                    LevelManager.Get().GetProfile(arg.Author.Id).AddMessage(1);
+                    LevelManager.Get().GetProfile(arg.Author.Id).AddExp(1 * Multiplier.GetMultiplier((SocketGuildUser) arg.Author).MultiplierNumber);
                 }
-                else LevelManager.Get().CreateProfile(arg.Author.Id).AddMessage(1);
+                else LevelManager.Get().CreateProfile(arg.Author.Id).AddExp(1 * Multiplier.GetMultiplier((SocketGuildUser) arg.Author).MultiplierNumber);
             }
             return Task.CompletedTask;
         }
 
+        private static bool _wasReady = false;
         private static Task SocketClientOnReady()
         {
+            if (!_wasReady)
+            {
+                Program.instance.DatabaseManager.Init();
+                TempbanManager.Get().Init();
+                YoutubeManager.Get().Init();
+                WarnManager.Get().Init();
+                LevelManager.Get().CheckForValidEntries();
+                VoiceCounter.Get().Start();
+                ConsoleListener.Get().Start();
+                _wasReady = true;
+            }
             Console.WriteLine("Ready !");
-            Program.instance.DatabaseManager.Init();
-            ConsoleListener.Get().Start();
-            TempbanManager.Get().Init();
             return Task.CompletedTask;
         }
 
@@ -214,7 +291,7 @@ namespace TjulfarBot.Net
 
         private static Task SocketClientOnConnected()
         {
-            Console.WriteLine("Connected to " + SocketClient.CurrentUser.Username);
+            Console.WriteLine("Connected to " + SocketClient.CurrentUser);
             return Task.CompletedTask;
         }
         

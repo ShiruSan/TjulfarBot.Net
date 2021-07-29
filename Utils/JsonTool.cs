@@ -12,27 +12,12 @@ namespace TjulfarBot.Net.Utils
 
         public static string Serialize(object data)
         {
-            JsonSerializer jsonSerializer = new JsonSerializer();
-            using var memStream = new MemoryStream();
-            using var sw = new StreamWriter(memStream);
-            using var jsonWriter = new JsonTextWriter(sw);
-            jsonSerializer.Serialize(jsonWriter, data);
-
-            using var reader = new StreamReader(memStream);
-
-            return reader.ReadToEnd();
+            return JsonConvert.SerializeObject(data);
         }
         
         public static object DeserializeFromString(Type type, string json)
         {
-            var jsonSerializer = new JsonSerializer();
-            using var memStream = new MemoryStream();
-            var bytes = Encoding.UTF8.GetBytes(json);
-            memStream.Write(bytes, 0, bytes.Length);
-            using var sr = new StreamReader(memStream);
-            using var jsonReader = new JsonTextReader(sr);
-            var jObject = jsonSerializer.Deserialize(jsonReader) as JObject;
-            return jObject.ToObject(type);
+            return (JsonConvert.DeserializeObject(json) as JObject)?.ToObject(type);
         }
 
         public static void Serialize(object data, string filePath)

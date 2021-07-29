@@ -1,11 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Net;
-using System.Timers;
+using System.Threading;
 using Discord;
-using Discord.WebSocket;
+using Google.Apis.Services;
+using Google.Apis.YouTube.v3;
+using Google.Apis.YouTube.v3.Data;
 using TjulfarBot.Net.Utils;
 
 namespace TjulfarBot.Net.Youtube
@@ -13,9 +12,12 @@ namespace TjulfarBot.Net.Youtube
     public class YoutubeManager
     {
         private static YoutubeManager _instance;
-        private List<string> _channelIds = new List<string>();
-        private readonly string _apiKey = "";
-        private Timer _schedulers = new Timer();
+        private Thread _thread;
+        private readonly YouTubeService _youTubeService = new(new BaseClientService.Initializer()
+        {
+            ApplicationName = "discord-bot",
+            ApiKey = "AIzaSyAYtR_g7L__NKI_L7LRpHE3aRnTQ8UKc2Y"
+        });
 
         public static YoutubeManager Get()
         {
@@ -25,86 +27,75 @@ namespace TjulfarBot.Net.Youtube
 
         public void Init()
         {
-            using var connection = Program.instance.DatabaseManager.GetConnection();
-            using var command = connection.CreateCommand();
-            command.CommandText = "select * from `Youtube`";
-            command.Prepare();
-            var reader = command.ExecuteReader();
-            while (reader.Read())
-            {
-                _channelIds.Add(reader.GetString(0));
-            }
-            reader.Close();
-            _schedulers.Interval = (15 * 60 * 1000);
-            _schedulers.Elapsed += OnSchedulerTick;
-            _schedulers.AutoReset = true;
-            _schedulers.Start();
+            _thread = new Thread(Loop);
+            _thread.Start();
         }
 
-        public Item GetItemForID(string channelID)
+        private void Loop()
         {
-            try
+            while (true)
             {
-                var request = WebRequest.CreateHttp($"https://www.googleapis.com/youtube/v3/search?key={_apiKey}&channelId={channelID}&part=snippet,id&order=date&maxResults=1");
-                var response = request.GetResponse();
-                var reader = new StreamReader(response.GetResponseStream());
-                var json = reader.ReadToEnd();
-                response.Close();
-                SearchResponse response2 = JsonTool.DeserializeFromString(typeof(SearchResponse), json) as SearchResponse;
-                if (response2.items[0].id.kind.Equals("youtube#video")) return response2.items[0];
+                try
+                {
+                    OnSchedulerTick();
+                    Thread.Sleep(TimeSpan.FromMinutes(15));
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine($"Exception in Youtube Threading Listener:\n{e}");
+                }
             }
-            catch (WebException) {}
-            catch(NullReferenceException) {}
-
-            return null;
         }
 
-        private Dictionary<string, Item> _lastUploads = new Dictionary<string, Item>();
-        private void OnSchedulerTick(object sender, ElapsedEventArgs e)
+        private SearchResult lastUpload;
+        private void OnSchedulerTick()
         {
             if(Program.instance.Settings.videoUploadChannel == -1) return;
+            var request = _youTubeService.Search.List("snippet");
+            request.ChannelId = "UC5ZYeY8BxFXmcPu8m-hWDug";
+            request.Type = "video";
+            request.MaxResults = 1;
+            var response = request.Execute();
+            if(response.Items.Count == 0) return;
+            var item = response.Items[0];
+            if (lastUpload == null)
+            {
+                lastUpload = item;
+                return;
+            }
+            if(lastUpload.Id.VideoId.Equals(item.Id.VideoId)) return;
+            
+            if(lastUpload.Snippet.PublishedAt.Value > item.Snippet.PublishedAt.Value || lastUpload.Snippet.PublishedAt.Value == item.Snippet.PublishedAt.Value) return;
+            lastUpload = item;
             var channel = Program.instance.SocketClient.GetGuild((ulong) Program.instance.Settings.defaultGuild)
                 .GetTextChannel((ulong) Program.instance.Settings.videoUploadChannel);
-            foreach (var id in _channelIds)
+            var builder = new EmbedBuilder();
+            builder.WithColor(Color.Red);
+            if (item.Snippet.LiveBroadcastContent.Equals("live"))
             {
-                var item = GetItemForID(id);
-                if(item == null) continue;
-                if (!_lastUploads.ContainsKey(id))
-                {
-                    _lastUploads.Add(id, item);
-                    continue;
-                }
-                if(_lastUploads.ContainsValue(item)) continue;
-                var builder = new EmbedBuilder();
-                builder.WithColor(Color.Red);
-                if (item.snippet.liveBroadcastContent.Equals("live"))
-                {
-                    builder.WithTitle($"{item.snippet.channelTitle} streamt nun !");
-                    builder.WithDescription(
-                        $"{item.snippet.channelTitle} stream jetzt auf Youtube !\nSchaue jetzt zu: {item.GetAsVideoUrl()}");
-                }
-                else
-                {
-                    builder.WithTitle($"{item.snippet.channelTitle} hat ein neues Video hochgeladen !");
-                    builder.WithDescription(
-                        $"{item.snippet.channelTitle} hat ein neues Video hochgeladen !\n{item.GetAsVideoUrl()}");
-                }
-
-                builder.WithImageUrl(item.snippet.thumbnails.high.ToString())
-                    .WithFooter(item.snippet.publishedAt.ToShortDateString());
-                builder.WithFields(new []
-                {
-                    new EmbedFieldBuilder().WithName(item.snippet.title).WithValue(item.snippet.description).WithIsInline(false)
-                });
-                channel.SendMessageAsync(channel.Guild.EveryoneRole.Mention, false, builder.Build()).GetAwaiter().GetResult();
-                _lastUploads.Remove(id);
-                _lastUploads.Add(id, item);
+                builder.WithTitle($"{item.Snippet.ChannelTitle} streamt nun !");
+                builder.WithDescription(
+                    $"{item.Snippet.ChannelTitle} stream jetzt auf Youtube !\nSchaue jetzt zu: https://www.youtube.com/watch?v={item.Id.VideoId}");
             }
+            else
+            {
+                builder.WithTitle($"{item.Snippet.ChannelTitle} hat ein neues Video hochgeladen !");
+                builder.WithDescription(
+                    $"{item.Snippet.ChannelTitle} hat ein neues Video hochgeladen !\nhttps://www.youtube.com/watch?v={item.Id.VideoId}");
+            }
+
+            builder.WithImageUrl(item.Snippet.Thumbnails.High.Url)
+                .WithFooter(item.Snippet.PublishedAt.Value.ToLongDateString() + " " + item.Snippet.PublishedAt.Value.ToShortTimeString());
+            builder.WithFields(new []
+            {
+                new EmbedFieldBuilder().WithName(item.Snippet.Title).WithValue(item.Snippet.Description).WithIsInline(false)
+            });
+            channel.SendMessageAsync(channel.Guild.EveryoneRole.Mention, false, builder.Build()).GetAwaiter().GetResult();
         }
 
         public void Close()
         {
-            _schedulers.Stop();
+            _thread.Interrupt();
         }
         
     }

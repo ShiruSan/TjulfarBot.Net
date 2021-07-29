@@ -23,12 +23,9 @@ namespace TjulfarBot.Net.Tempban
             command.Parameters.AddWithValue("@passing", DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond);
             command.Prepare();
             var reader = command.ExecuteReader();
-            if (reader.HasRows)
+            while (reader.Read())
             {
-                while (reader.Read())
-                {
-                    new TempbanEntry(reader.GetInt32(0), reader.GetInt64(1), reader.GetInt64(2)).Purge();
-                }
+                new TempbanEntry(reader.GetInt32(0), reader.GetInt64(1), reader.GetInt64(2)).Purge();
             }
             reader.Close();
         }

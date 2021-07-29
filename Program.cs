@@ -31,8 +31,13 @@ namespace TjulfarBot.Net
 
         private async Task StartBot()
         {
-            SocketClient = new DiscordSocketClient();
+            var config = new DiscordSocketConfig()
+            {
+                AlwaysDownloadUsers = true
+            };
             
+            SocketClient = new DiscordSocketClient(config);
+
             Listener.Set(SocketClient);
 
             StreamReader reader = new StreamReader(File.OpenRead("token.txt"));
@@ -55,7 +60,7 @@ namespace TjulfarBot.Net
             await SocketClient.StopAsync();
             await SocketClient.LogoutAsync();
             SocketClient.Dispose();
-            
+
             JsonTool.Serialize(Settings, "settings.json");
         }
         

@@ -12,7 +12,7 @@ namespace TjulfarBot.Net.Utils
         public long ruleChannel;
         public long levelupChannel;
         public long videoUploadChannel;
-        public long defaultGuild;
+        public ulong defaultGuild;
         public MySQLConfig mySQLConfig;
 
         public static Settings Default = CreateDefault();

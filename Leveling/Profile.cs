@@ -7,44 +7,44 @@ namespace TjulfarBot.Net.Leveling
     {
         public long userid { get; private set; }
         public int level { get; private set; }
-        public int messages { get; private set; }
+        public float exp { get; private set; }
 
-        public Profile(long userid, int level, int messages)
+        public Profile(long userid, int level, float exps)
         {
             this.userid = userid;
             this.level = level;
-            this.messages = messages;
+            this.exp = exps;
         }
 
         public void CreateDatabaseEntry()
         {
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
-            command.CommandText = "insert into `Levels` values (@id, @level, @messages)";
+            command.CommandText = "insert into `Levels` values (@id, @level, @exp)";
             command.Parameters.AddWithValue("@id", userid);
             command.Parameters.AddWithValue("@level", level);
-            command.Parameters.AddWithValue("@messages", messages);
+            command.Parameters.AddWithValue("@exp", exp);
             command.Prepare();
             command.ExecuteNonQuery();
         }
 
-        public void AddMessage(int count)
+        public void AddExp(float expAdd)
         {
-            messages += count;
+            exp += expAdd;
             int nextLevel = 10;
             if (level != 0) nextLevel = (level * 100);
-            if (messages >= nextLevel)
+            if (exp >= nextLevel)
             {
                 level++;
-                messages = 0;
+                exp = 0;
                 LevelManager.Get().OnLevelUp(this);
             }
 
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
-            command.CommandText = "update `Levels` set `level` = @level, `messages` = @messages where `userid` = @userid";
+            command.CommandText = "update `Levels` set `level` = @level, `exp` = @exp where `userid` = @userid";
             command.Parameters.AddWithValue("@level", level);
-            command.Parameters.AddWithValue("@messages", messages);
+            command.Parameters.AddWithValue("@exp", exp);
             command.Parameters.AddWithValue("@userid", userid);
             command.Prepare();
             command.ExecuteNonQuery();
@@ -61,7 +61,7 @@ namespace TjulfarBot.Net.Leveling
             builder.WithFields(new []
             {
                 new EmbedFieldBuilder().WithName("Aktuelles Level:").WithValue(level).WithIsInline(false),
-                new EmbedFieldBuilder().WithName("Nachrichten bis zum n\u00e4chsten Aufstieg").WithValue(messages + "/" + nextLevel).WithIsInline(false)
+                new EmbedFieldBuilder().WithName("Exp. bis zum n\u00e4chsten Aufstieg").WithValue(exp + "/" + nextLevel).WithIsInline(false)
             });
             return builder.Build();
         }
