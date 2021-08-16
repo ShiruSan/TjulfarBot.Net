@@ -6,9 +6,9 @@ using TjulfarBot.Net.Managers;
 
 namespace TjulfarBot.Net.Commands
 {
-    public class About : Command
+    public class Help : Command
     {
-        public About() : base("about")
+        public Help() : base("help")
         {
         }
 
@@ -33,7 +33,7 @@ namespace TjulfarBot.Net.Commands
                 i++;
             }
 
-            List<EmbedFieldBuilder> fieldBuilders = new List<EmbedFieldBuilder>();
+            var fieldBuilders = new List<EmbedFieldBuilder>();
             fieldBuilders.Add(new EmbedFieldBuilder().WithName("Alle Commands").WithValue(String.Join("\n", commands)).WithIsInline(false));
             fieldBuilders.Add(new EmbedFieldBuilder().WithName("Aktuelle Version").WithValue("TjulfarBot 1.0\nC# Rewrite (TjulfarBot.Net)").WithIsInline(false));
             builder.WithFields(fieldBuilders);

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Discord;
 using Discord.WebSocket;
@@ -15,7 +16,7 @@ namespace TjulfarBot.Net.Managers
 
         public CommandManager()
         {
-            Commands.Add(new About());
+            Commands.Add(new Help());
             Commands.Add(new Announcement());
             Commands.Add(new Channel());
             Commands.Add(new Clear());
@@ -27,7 +28,6 @@ namespace TjulfarBot.Net.Managers
 
         public async void ExecuteCommand(Command command, DiscordSocketClient socketClient, SocketMessage message, string[] arguments)
         {
-            await Task.Delay(1);
             SocketGuildUser guildUser = (SocketGuildUser) message.Author;
             if (command.Permission != null)
             {
@@ -62,6 +62,7 @@ namespace TjulfarBot.Net.Managers
         public SocketMessage Message;
         public SocketGuild Guild;
         public SocketSelfUser SelfUser;
+        public SocketGuildUser[] mentions;
         public string[] Arguments;
 
         public CommandContext(DiscordSocketClient socketClient, SocketMessage message, string[] arguments)
@@ -73,6 +74,17 @@ namespace TjulfarBot.Net.Managers
             SelfUser = socketClient.CurrentUser;
             Message = message;
             Arguments = arguments;
+            var rawMentions = new List<SocketGuildUser>();
+            foreach (var user in message.MentionedUsers)
+            {
+                var toAdd = user as SocketGuildUser;
+                if (toAdd == null)
+                {
+                    toAdd = Guild.GetUser(user.Id);
+                }
+                rawMentions.Add(toAdd);
+            }
+            mentions = rawMentions.ToArray();
         }
     }
     

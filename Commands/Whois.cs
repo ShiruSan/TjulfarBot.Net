@@ -19,9 +19,9 @@ namespace TjulfarBot.Net.Commands
             {
                 ctx.Channel.SendMessageAsync(null, false, GetInfo(ctx.Author)).GetAwaiter().GetResult();
             }
-            else if (ctx.Arguments.Length == 1 && ctx.Message.MentionedUsers.Count == 1)
+            else if (ctx.Arguments.Length == 1 && ctx.mentions.Length == 1)
             {
-                ctx.Channel.SendMessageAsync(null, false, GetInfo(ctx.Message.MentionedUsers.First() as SocketGuildUser)).GetAwaiter().GetResult();
+                ctx.Channel.SendMessageAsync(null, false, GetInfo(ctx.mentions[0])).GetAwaiter().GetResult();
             }
             else SendHelpMessage(ctx.Channel);
         }

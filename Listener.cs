@@ -212,7 +212,7 @@ namespace TjulfarBot.Net
             var regeln = "Regeln";
             if (Program.instance.Settings.levelupChannel != -1) regeln = arg.Guild.GetTextChannel((ulong) Program.instance.Settings.ruleChannel).Mention;
             builder.WithDescription(
-                $"Willkommen zur Tjulfars Bande, {arg.Mention} !\nLies dir doch als erstes die Regeln ({regeln}) durch !");
+                $"Willkommen zur Tjulfars Bande, {arg} !\nLies dir doch als erstes die Regeln ({regeln}) durch !");
             channel.SendMessageAsync(null, false, builder.Build()).GetAwaiter().GetResult();
             return Task.CompletedTask;
         }

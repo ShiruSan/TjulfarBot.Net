@@ -93,9 +93,10 @@ namespace TjulfarBot.Net.Leveling
         {
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
-            command.CommandText = "insert into `LevelConfig` values (@id, @type)";
+            command.CommandText = "insert into `LevelConfig` values (@id, @type, @other)";
             command.Parameters.AddWithValue("@id", userid);
             command.Parameters.AddWithValue("@type", "blacklist");
+            command.Parameters.AddWithValue("@other", null);
             command.Prepare();
             command.ExecuteNonQuery();
         }
@@ -104,9 +105,10 @@ namespace TjulfarBot.Net.Leveling
         {
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
-            command.CommandText = "insert into `LevelConfig` values (@id, @type)";
+            command.CommandText = "insert into `LevelConfig` values (@id, @type, @other)";
             command.Parameters.AddWithValue("@id", channelid);
             command.Parameters.AddWithValue("@type", "channel");
+            command.Parameters.AddWithValue("@other", null);
             command.Prepare();
             command.ExecuteNonQuery();
         }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Net;
 using System.Threading;
 using Discord;
@@ -46,8 +47,7 @@ namespace TjulfarBot.Net.Youtube
                 }
             }
         }
-
-        private SearchResult lastUpload;
+        
         private void OnSchedulerTick()
         {
             if(Program.instance.Settings.videoUploadChannel == -1) return;
@@ -55,18 +55,23 @@ namespace TjulfarBot.Net.Youtube
             request.ChannelId = "UC5ZYeY8BxFXmcPu8m-hWDug";
             request.Type = "video";
             request.MaxResults = 1;
+            request.Order = SearchResource.ListRequest.OrderEnum.Date;
             var response = request.Execute();
+            using (var writer = new StreamWriter(File.OpenWrite("latestResults.txt"))) writer.Write($"{JsonTool.Serialize(response)} \n \n \n");
             if(response.Items.Count == 0) return;
             var item = response.Items[0];
-            if (lastUpload == null)
+            if (!File.Exists("lastUpload.json"))
             {
-                lastUpload = item;
+                using var stream = File.CreateText("lastUpload.json");
+                stream.Write(JsonTool.Serialize(item));
                 return;
             }
+            using var reader = File.OpenText("lastUpload.json");
+            var lastUpload = JsonTool.DeserializeFromString(typeof(SearchResult), reader.ReadToEnd()) as SearchResult;
             if(lastUpload.Id.VideoId.Equals(item.Id.VideoId)) return;
-            
-            if(lastUpload.Snippet.PublishedAt.Value > item.Snippet.PublishedAt.Value || lastUpload.Snippet.PublishedAt.Value == item.Snippet.PublishedAt.Value) return;
-            lastUpload = item;
+            File.Delete("lastUpload.json");
+            using var stream2 = File.CreateText("lastUpload.json");
+            stream2.Write(JsonTool.Serialize(item));
             var channel = Program.instance.SocketClient.GetGuild((ulong) Program.instance.Settings.defaultGuild)
                 .GetTextChannel((ulong) Program.instance.Settings.videoUploadChannel);
             var builder = new EmbedBuilder();

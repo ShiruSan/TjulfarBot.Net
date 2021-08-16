@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using Discord;
@@ -78,15 +79,34 @@ namespace TjulfarBot.Net.Leveling
                         new RankLoader(message, ctx.Author.Id).Start();
                     }
                 }
+                else if (ctx.Arguments[0].Equals("multiplier"))
+                {
+                    var embed = new EmbedBuilder();
+                    var multiplier = Multiplier.GetMultiplier(ctx.Author);
+                    embed.WithTitle("Level Multiplikator").WithThumbnailUrl(ctx.Author.GetAvatarUrl()).WithColor(Color.Green);
+                    var roleMentions = new List<string>();
+                    foreach (var role in Multiplier.GetMultiplierRoles(ctx.Author))
+                    {
+                        roleMentions.Add(role.Mention);
+                    }
+                    if(roleMentions.Count == 0) roleMentions.Add("Keine");
+                    embed.WithFields(new[]
+                    {
+                        new EmbedFieldBuilder().WithName("Aktueller Multiplikator:").WithValue(
+                            $"{multiplier.MultiplierNumber}\n\n{multiplier.MultiplierNumber} Exp. für jede Nachricht\n{multiplier.MultiplierNumber * 5} Exp. für 10 Minuten im Voice Chat").WithIsInline(false),
+                        new EmbedFieldBuilder().WithName("Auf den Multiplikator einflusshabende Rollen:").WithValue(string.Join(", ", roleMentions)).WithIsInline(false)
+                    });
+                    ctx.Channel.SendMessageAsync(null, false, embed.Build()).GetAwaiter().GetResult();
+                }
                 else
                 {
-                    if (ctx.Message.MentionedUsers.Count != 1)
+                    if (ctx.mentions.Length != 1)
                     {
                         SendHelpMessage(ctx.Channel);
                         return; 
                     }
 
-                    SocketUser socketUser = ctx.Message.MentionedUsers.ToArray()[0];
+                    var socketUser = ctx.mentions[0];
                 
                     Embed toSend;
                     if (LevelManager.Get().ExistsProfile(socketUser.Id))
@@ -112,13 +132,13 @@ namespace TjulfarBot.Net.Leveling
 
                 if (ctx.Author.GuildPermissions.Has(GuildPermission.MuteMembers))
                 {
-                    if (ctx.Message.MentionedUsers.Count != 1)
+                    if (ctx.mentions.Length != 1)
                     {
                         SendHelpMessage(ctx.Channel);
                         return; 
                     }
                     
-                    SocketUser socketUser = ctx.Message.MentionedUsers.ToArray()[0];
+                    var socketUser = ctx.mentions[0];
                     if (LevelManager.Get().ExistsBlacklist(socketUser.Id))
                     {
                         LevelManager.Get().RemoveBlacklist(socketUser.Id);
@@ -146,13 +166,13 @@ namespace TjulfarBot.Net.Leveling
                     return;
                 }
 
-                if (ctx.Message.MentionedChannels.Count != 1)
+                if (ctx.mentions.Length != 1)
                 {
                     SendHelpMessage(ctx.Channel);
                     return;
                 }
 
-                var channel = ctx.Message.MentionedChannels.ToArray()[0];
+                var channel = ctx.mentions[0];
 
                 if (ctx.Arguments[1].Equals("add"))
                 {
