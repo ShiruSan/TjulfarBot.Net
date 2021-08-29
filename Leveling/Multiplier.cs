@@ -14,6 +14,7 @@ namespace TjulfarBot.Net.Leveling
             using var connection = Program.instance.DatabaseManager.GetConnection();
             using var command = connection.CreateCommand();
             command.CommandText = "select * from `LevelConfig` where `id` = @id && `type` = @type";
+            var multiplier = @default;
             foreach (var role in user.Roles)
             {
                 if (!role.IsEveryone)
@@ -25,14 +26,15 @@ namespace TjulfarBot.Net.Leveling
                     using (var reader = command.ExecuteReader())
                     {
                         if(!reader.Read()) continue;
-                        return new Multiplier()
+                        var current = new Multiplier()
                         {
                             MultiplierNumber = float.Parse(reader.GetString(2))
                         };
+                        if (multiplier.MultiplierNumber < current.MultiplierNumber) multiplier = current;
                     }
                 }
             }
-            return @default;
+            return multiplier;
         }
 
         public static IReadOnlyList<SocketRole> GetMultiplierRoles(SocketGuildUser user)
@@ -57,5 +59,11 @@ namespace TjulfarBot.Net.Leveling
             return readOnlyBuilder.ToReadOnlyCollection();
         }
 
+        public override bool Equals(object? obj)
+        {
+            if (obj == null) return false;
+            else if (!(obj is Multiplier)) return false;
+            else return MultiplierNumber.Equals((obj as Multiplier).MultiplierNumber);
+        }
     }
 }

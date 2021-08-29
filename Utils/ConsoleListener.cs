@@ -30,17 +30,20 @@ namespace TjulfarBot.Net.Utils
                 string line;
                 if ((line = Console.ReadLine()) != null)
                 {
-                    switch (line)
+                    var args = line.Split(" ");
+                    switch (args[0])
                     {
                         case "shutdown":
                             Program.instance.Close().GetAwaiter().GetResult();
                             Environment.Exit(0);
                             break;
+
                         default:
                             break;
                     }
                 }
             }
         }
+
     }
 }

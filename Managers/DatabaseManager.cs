@@ -61,8 +61,21 @@ namespace TjulfarBot.Net.Managers
                                   "( `id` INT NOT NULL ," +
                                   "`userid` BIGINT NOT NULL ," +
                                   " `money` INT NOT NULL ," +
-                                  "`accountType` VARCHAR(12) NOT NULL ," +
+                                  "`type` VARCHAR(12) NOT NULL ," +
+                                  "`daily` DATETIME NULL," +
                                   "PRIMARY KEY (`id`));";
+            command.Prepare();
+            command.ExecuteNonQuery();
+            command.CommandText = "CREATE TABLE IF NOT EXISTS `Autorole`" +
+                                  "(`roleid` BIGINT NOT NULL, " +
+                                  "PRIMARY KEY (`roleid`));";
+            command.Prepare();
+            command.ExecuteNonQuery();
+            command.CommandText = "CREATE TABLE IF NOT EXISTS `ReactionRole`(" +
+                                  "`id` INT NOT NULL," +
+                                  "`roleid` BIGINT NOT NULL," +
+                                  "`emoji` VARCHAR(12) NOT NULL," +
+                                  "PRIMARY KEY(`id`)";
             command.Prepare();
             command.ExecuteNonQuery();
         }

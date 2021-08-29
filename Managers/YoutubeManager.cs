@@ -39,12 +39,12 @@ namespace TjulfarBot.Net.Youtube
                 try
                 {
                     OnSchedulerTick();
-                    Thread.Sleep(TimeSpan.FromMinutes(15));
                 }
                 catch (Exception e)
                 {
                     Console.WriteLine($"Exception in Youtube Threading Listener:\n{e}");
                 }
+                Thread.Sleep(TimeSpan.FromMinutes(15));
             }
         }
         

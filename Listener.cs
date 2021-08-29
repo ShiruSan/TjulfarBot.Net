@@ -1,15 +1,24 @@
 ﻿using System;
-using System.ComponentModel;
+using System.Drawing;
+using System.Drawing.Text;
+using System.IO;
+using System.Linq;
+using System.Net;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
+using TjulfarBot.Net.Economy;
 using TjulfarBot.Net.Leveling;
 using TjulfarBot.Net.Managers;
 using TjulfarBot.Net.Tempban;
 using TjulfarBot.Net.Utils;
 using TjulfarBot.Net.Warn;
 using TjulfarBot.Net.Youtube;
+using Color = Discord.Color;
+using Image = System.Drawing.Image;
+using ImageFormat = System.Drawing.Imaging.ImageFormat;
 
 namespace TjulfarBot.Net
 {
@@ -147,7 +156,6 @@ namespace TjulfarBot.Net
         private static Task SocketClientOnUserLeft(SocketGuildUser arg)
         {
             LevelManager.Get().DeleteProfile(arg.Id);
-            var channel = arg.Guild.GetTextChannel((ulong) Program.instance.Settings.serverLogChannel);
             Task.Delay(250).GetAwaiter().GetResult();
             var logs = arg.Guild.GetAuditLogsAsync(10).FlattenAsync().GetAwaiter().GetResult();
             var kicked = false;
@@ -164,9 +172,8 @@ namespace TjulfarBot.Net
             }
 
             var builder = new EmbedBuilder();
-            if (kicked)
+            if (kicked && Program.instance.Settings.serverLogChannel != -1)
             {
-                if(Program.instance.Settings.serverLogChannel == -1) return Task.CompletedTask;
                 builder.WithTitle("Mitglied gekickt !").WithColor(new Color(255, 255, 0))
                     .WithThumbnailUrl(arg.GetAvatarUrl());
                 EmbedFieldBuilder[] fields;
@@ -190,30 +197,50 @@ namespace TjulfarBot.Net
 
                 builder.WithFields(fields);
                 builder.WithFooter($"User-ID: {arg.Id}");
+                arg.Guild.GetTextChannel((ulong) Program.instance.Settings.serverLogChannel).SendMessageAsync(null, false, builder.Build()).GetAwaiter().GetResult();
             }
-            else
+
+            if (Program.instance.Settings.welcomeChannel != -1)
             {
-                if(Program.instance.Settings.welcomeChannel == -1) return Task.CompletedTask;
                 builder.WithTitle($"{arg} hat den Server verlassen !").WithColor(Color.DarkerGrey)
                     .WithThumbnailUrl(arg.GetAvatarUrl());
                 builder.WithDescription($"Wir wünschen {arg} dennoch weiterhin viel Spaß !");
-                channel = arg.Guild.GetTextChannel((ulong) Program.instance.Settings.welcomeChannel);
+                arg.Guild.GetTextChannel((ulong) Program.instance.Settings.welcomeChannel).SendMessageAsync(null, false, builder.Build()).GetAwaiter().GetResult();
             }
-            channel.SendMessageAsync(null, false, builder.Build()).GetAwaiter().GetResult();
+            
+            if(EcoManager.Get().HasBankAccount(arg.Id) || EcoManager.Get().HasPocketMoney(arg.Id)) EcoManager.Get().RemoveAccounts(arg.Id);
+            
             return Task.CompletedTask;
         }
 
+        private static Font calibril;
         private static Task SocketClientOnUserJoined(SocketGuildUser arg)
         {
+            foreach (var autorole in AutoroleManager.Get().GetAutoroles())
+            {
+                arg.AddRoleAsync(autorole).GetAwaiter().GetResult();
+            }
             if(Program.instance.Settings.welcomeChannel == -1) return Task.CompletedTask;
             var channel = arg.Guild.GetTextChannel((ulong) Program.instance.Settings.welcomeChannel);
-            var builder = new EmbedBuilder();
-            builder.WithTitle("Neues Mitglied !").WithThumbnailUrl(arg.GetAvatarUrl()).WithColor(Color.Green);
-            var regeln = "Regeln";
-            if (Program.instance.Settings.levelupChannel != -1) regeln = arg.Guild.GetTextChannel((ulong) Program.instance.Settings.ruleChannel).Mention;
-            builder.WithDescription(
-                $"Willkommen zur Tjulfars Bande, {arg} !\nLies dir doch als erstes die Regeln ({regeln}) durch !");
-            channel.SendMessageAsync(null, false, builder.Build()).GetAwaiter().GetResult();
+            var webclient = new WebClient();
+            webclient.DownloadDataCompleted += (sender, args) =>
+            {
+                var downloadedBytes = args.Result;
+                var stream = new MemoryStream();
+                stream.Write(downloadedBytes, 0, downloadedBytes.Length);
+                using var pb = Image.FromStream(stream);
+                stream.Close();
+                using var welcome = Image.FromFile("TjulfarWelcome.png");
+                using var graphics = Graphics.FromImage(welcome);
+                graphics.DrawString(arg.ToString(), calibril, new SolidBrush(System.Drawing.Color.White), new PointF(280, 70));
+                graphics.DrawImage(pb, new Point(280, 110));
+                graphics.Save();
+                welcome.Save("welcome.png", ImageFormat.Png);
+                channel.SendFileAsync("welcome.png", arg.Mention).GetAwaiter().GetResult();
+                webclient.Dispose();
+                File.Delete("welcome.png");
+            };
+            webclient.DownloadDataAsync(new Uri(arg.GetAvatarUrl()));
             return Task.CompletedTask;
         }
 
@@ -277,6 +304,19 @@ namespace TjulfarBot.Net
                 LevelManager.Get().CheckForValidEntries();
                 VoiceCounter.Get().Start();
                 ConsoleListener.Get().Start();
+                using var privateFontCollection = new PrivateFontCollection();
+                var fontBytes = File.ReadAllBytes("calibril.ttf");
+                var handle = GCHandle.Alloc(fontBytes, GCHandleType.Pinned);
+                var pointer = handle.AddrOfPinnedObject();
+                try
+                {
+                    privateFontCollection.AddMemoryFont(pointer, fontBytes.Length);
+                }
+                finally
+                {
+                    handle.Free();
+                }
+                calibril = new Font(privateFontCollection.Families.First(), 15);
                 _wasReady = true;
             }
             Console.WriteLine("Ready !");

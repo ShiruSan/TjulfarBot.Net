@@ -12,7 +12,7 @@ namespace TjulfarBot.Net.Utils
 
         public static string Serialize(object data)
         {
-            return JsonConvert.SerializeObject(data);
+            return JsonConvert.SerializeObject(data, Formatting.Indented);
         }
         
         public static object DeserializeFromString(Type type, string json)
@@ -26,6 +26,7 @@ namespace TjulfarBot.Net.Utils
             if (File.Exists(filePath)) File.Delete(filePath);
             using var sw = new StreamWriter(filePath);
             using var jsonWriter = new JsonTextWriter(sw);
+            jsonSerializer.Formatting = Formatting.Indented;
             jsonSerializer.Serialize(jsonWriter, data);
         }
 

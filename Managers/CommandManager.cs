@@ -16,13 +16,14 @@ namespace TjulfarBot.Net.Managers
 
         public CommandManager()
         {
-            Commands.Add(new Help());
             Commands.Add(new Announcement());
+            Commands.Add(new Autorole());
             Commands.Add(new Channel());
             Commands.Add(new Clear());
             Commands.Add(new LevelCommand());
             Commands.Add(new TempbanCommand());
             Commands.Add(new WarnCommand());
+            Commands.Add(new Help());
             Commands.Add(new Whois());
         }
 
